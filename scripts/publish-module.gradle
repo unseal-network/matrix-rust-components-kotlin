@@ -20,7 +20,7 @@ afterEvaluate {
                 pom {
                     name = PUBLISH_ARTIFACT_ID
                     description = PUBLISH_DESCRIPTION
-                    url = 'https://github.com/matrix-org/matrix-rust-components-kotlin'
+                    url = 'https://github.com/unseal-network/matrix-rust-components-kotlin'
                     licenses {
                         license {
                             name = 'The Apache Software License, Version 2.0'
@@ -36,9 +36,9 @@ afterEvaluate {
                     }
 
                     scm {
-                        connection = 'scm:git:git://github.com/matrix-org/matrix-rust-components-kotlin.git'
-                        developerConnection = 'scm:git:ssh://git@github.com/matrix-org/matrix-rust-components-kotlin.git'
-                        url = 'https://github.com/matrix-org/matrix-rust-components-kotlin'
+                        connection = 'scm:git:git://github.com/unseal-network/matrix-rust-components-kotlin.git'
+                        developerConnection = 'scm:git:ssh://git@github.com/unseal-network/matrix-rust-components-kotlin.git'
+                        url = 'https://github.com/unseal-network/matrix-rust-components-kotlin'
                     }
                 }
             }

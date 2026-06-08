@@ -227,12 +227,12 @@ def main(args: argparse.Namespace):
         commit_and_push_changes(project_root, commit_message)
 
         release_name = f"{args.module.name.lower()}-v{args.version}"
-        release_notes = f"https://github.com/matrix-org/matrix-rust-sdk/tree/{args.linkable_ref}"
+        release_notes = f"https://github.com/unseal-network/matrix-rust-sdk/tree/{args.linkable_ref}"
         asset_path = get_asset_path(project_root, args.module)
         asset_name = get_asset_name(args.module)
         create_github_release(
           github_token,
-          "https://api.github.com/repos/matrix-org/matrix-rust-components-kotlin",
+          "https://api.github.com/repos/unseal-network/matrix-rust-components-kotlin",
           release_name,
           release_name,
           release_notes,

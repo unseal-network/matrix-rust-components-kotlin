@@ -1,10 +1,10 @@
-# Matrix rust components kotlin
+# Unseal Matrix rust components kotlin
 
 This repository is used for distributing kotlin releases of the Matrix Rust SDK. It'll provide the corresponding aar and also publish them on maven.
 
 ## Releasing
 
-There is a ['Release SDK Library (parallel)'](https://github.com/matrix-org/matrix-rust-components-kotlin/actions/workflows/release_sdk_parallel.yml) Github Actions workflow you can run with a parameter for the SDK branch or SHA - tags don't work correctly at the moment - and the new version name to release. 
+There is a ['Release SDK Library (parallel)'](https://github.com/unseal-network/matrix-rust-components-kotlin/actions/workflows/release_sdk_parallel.yml) Github Actions workflow you can run with a parameter for the SDK branch or SHA - tags don't work correctly at the moment - and the new version name to release. 
 There is also a 'Release Crypto Library' one that does the same for the crypto library.
 
 If you want to do it manually instead:
