@@ -30,8 +30,6 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
-import android.os.Build
-import androidx.annotation.RequiresApi
 import java.util.concurrent.atomic.AtomicBoolean
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
@@ -83,7 +81,7 @@ open class RustBuffer : Structure() {
 
     @Suppress("TooGenericExceptionThrown")
     fun asByteBuffer() =
-        this.data?.getByteBuffer(0, this.len)?.also {
+        this.data?.getByteBuffer(0, this.len.toLong())?.also {
             it.order(ByteOrder.BIG_ENDIAN)
         }
 }
@@ -636,10 +634,11 @@ internal object IntegrityCheckingUniffiLib {
     init {
         Native.register(IntegrityCheckingUniffiLib::class.java, findLibraryName(componentName = "matrix_sdk_crypto"))
         uniffiCheckContractApiVersion(this)
+        uniffiCheckApiChecksums(this)
     }
     external fun ffi_matrix_sdk_crypto_uniffi_contract_version(
     ): Int
-
+    
         
 }
 
@@ -771,7 +770,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_matrix_sdk_crypto_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-
+    
         
 }
 
@@ -783,6 +782,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
     if (bindings_contract_version != scaffolding_contract_version) {
         throw RuntimeException("UniFFI contract version mismatch: try cleaning and rebuilding your project")
     }
+}
+@Suppress("UNUSED_PARAMETER")
+private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
 }
 
 /**
@@ -914,28 +916,28 @@ private class UniffiJnaCleanable(
 // using Android or not.
 // There are further runtime checks to chose the correct implementation
 // of the cleaner.
-
-
 private fun UniffiCleaner.Companion.create(): UniffiCleaner =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        AndroidSystemCleaner()
-    } else {
+    try {
+        // For safety's sake: if the library hasn't been run in android_cleaner = true
+        // mode, but is being run on Android, then we still need to think about
+        // Android API versions.
+        // So we check if java.lang.ref.Cleaner is there, and use that…
+        java.lang.Class.forName("java.lang.ref.Cleaner")
+        JavaLangRefCleaner()
+    } catch (e: ClassNotFoundException) {
+        // … otherwise, fallback to the JNA cleaner.
         UniffiJnaCleaner()
     }
 
-// The SystemCleaner, available from API Level 33.
-// Some API Level 33 OSes do not support using it, so we require API Level 34.
-@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-private class AndroidSystemCleaner : UniffiCleaner {
-    val cleaner = android.system.SystemCleaner.cleaner()
+private class JavaLangRefCleaner : UniffiCleaner {
+    val cleaner = java.lang.ref.Cleaner.create()
 
     override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
-        AndroidSystemCleanable(cleaner.register(value, cleanUpTask))
+        JavaLangRefCleanable(cleaner.register(value, cleanUpTask))
 }
 
-@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-private class AndroidSystemCleanable(
-    private val cleanable: java.lang.ref.Cleaner.Cleanable,
+private class JavaLangRefCleanable(
+    val cleanable: java.lang.ref.Cleaner.Cleanable
 ) : UniffiCleaner.Cleanable {
     override fun clean() = cleanable.clean()
 }
@@ -1576,7 +1578,7 @@ public object FfiConverterTypeCrossSigningSecrets: FfiConverter<CrossSigningSecr
 
 
 /**
- * Struct containing the bundle of secrets to fully activate a new device for
+ * Struct containing the bundle of secrets to fully activate a new devices for
  * end-to-end encryption.
  */
 public interface SecretsBundleInterface {
@@ -1585,7 +1587,7 @@ public interface SecretsBundleInterface {
 }
 
 /**
- * Struct containing the bundle of secrets to fully activate a new device for
+ * Struct containing the bundle of secrets to fully activate a new devices for
  * end-to-end encryption.
  */
 open class SecretsBundle: Disposable, AutoCloseable, SecretsBundleInterface
@@ -1774,13 +1776,6 @@ enum class CollectStrategy {
     
     /**
      * Share with all (unblacklisted) devices.
-     *
-     * Not recommended, per the guidance of [MSC4153].
-     *
-     * (Used by Element X and Element Web in the legacy, non-"exclude insecure
-     * devices" mode.)
-     *
-     * [MSC4153]: https://github.com/matrix-org/matrix-doc/pull/4153
      */
     ALL_DEVICES,
     /**
@@ -1798,24 +1793,12 @@ enum class CollectStrategy {
      *
      * Once the problematic devices are blacklisted or whitelisted the
      * caller can retry to share a second time.
-     *
-     * Not recommended, per the guidance of [MSC4153].
-     *
-     * [MSC4153]: https://github.com/matrix-org/matrix-doc/pull/4153
      */
     ERROR_ON_VERIFIED_USER_PROBLEM,
     /**
      * Share based on identity. Only distribute to devices signed by their
      * owner. If a user has no published identity he will not receive
      * any room keys.
-     *
-     * This is the recommended strategy: it is compliant with the guidance of
-     * [MSC4153].
-     *
-     * (Used by Element Web and Element X in the "exclude insecure devices"
-     * mode.)
-     *
-     * [MSC4153]: https://github.com/matrix-org/matrix-doc/pull/4153
      */
     IDENTITY_BASED_STRATEGY,
     /**
@@ -1826,14 +1809,6 @@ enum class CollectStrategy {
      * - It is signed by its owner identity, and this identity has been
      * trusted via interactive verification.
      * - It is the current own device of the user.
-     *
-     * This strategy is compliant with [MSC4153], but is probably too strict
-     * for normal use.
-     *
-     * (Used by Element Web when "only send messages to verified users" is
-     * enabled.)
-     *
-     * [MSC4153]: https://github.com/matrix-org/matrix-doc/pull/4153
      */
     ONLY_TRUSTED_DEVICES;
 
@@ -1999,15 +1974,15 @@ sealed class LoginQrCodeDecodeException(message: String): kotlin.Exception(messa
         class UrlParse(message: String) : LoginQrCodeDecodeException(message)
         
     /**
-     * The QR code data contains an invalid intent, we expect the login
-     * intent or the reciprocate intent.
+     * The QR code data contains an invalid mode, we expect the login (0x03)
+     * mode or the reciprocate mode (0x04).
      */
-        class InvalidIntent(message: String) : LoginQrCodeDecodeException(message)
+        class InvalidMode(message: String) : LoginQrCodeDecodeException(message)
         
     /**
-     * The QR code data contains an unsupported type.
+     * The QR code data contains an unsupported version.
      */
-        class InvalidType(message: String) : LoginQrCodeDecodeException(message)
+        class InvalidVersion(message: String) : LoginQrCodeDecodeException(message)
         
     /**
      * The base64 encoded variant of the QR code data is not a valid base64
@@ -2036,8 +2011,8 @@ public object FfiConverterTypeLoginQrCodeDecodeError : FfiConverterRustBuffer<Lo
             1 -> LoginQrCodeDecodeException.NotEnoughData(FfiConverterString.read(buf))
             2 -> LoginQrCodeDecodeException.NotUtf8(FfiConverterString.read(buf))
             3 -> LoginQrCodeDecodeException.UrlParse(FfiConverterString.read(buf))
-            4 -> LoginQrCodeDecodeException.InvalidIntent(FfiConverterString.read(buf))
-            5 -> LoginQrCodeDecodeException.InvalidType(FfiConverterString.read(buf))
+            4 -> LoginQrCodeDecodeException.InvalidMode(FfiConverterString.read(buf))
+            5 -> LoginQrCodeDecodeException.InvalidVersion(FfiConverterString.read(buf))
             6 -> LoginQrCodeDecodeException.Base64(FfiConverterString.read(buf))
             7 -> LoginQrCodeDecodeException.InvalidPrefix(FfiConverterString.read(buf))
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -2063,11 +2038,11 @@ public object FfiConverterTypeLoginQrCodeDecodeError : FfiConverterRustBuffer<Lo
                 buf.putInt(3)
                 Unit
             }
-            is LoginQrCodeDecodeException.InvalidIntent -> {
+            is LoginQrCodeDecodeException.InvalidMode -> {
                 buf.putInt(4)
                 Unit
             }
-            is LoginQrCodeDecodeException.InvalidType -> {
+            is LoginQrCodeDecodeException.InvalidVersion -> {
                 buf.putInt(5)
                 Unit
             }
@@ -2083,57 +2058,6 @@ public object FfiConverterTypeLoginQrCodeDecodeError : FfiConverterRustBuffer<Lo
     }
 
 }
-
-
-
-/**
- * The intent of the device that generated/displayed the QR code.
- *
- * The QR code login mechanism supports both, the new device, as well as the
- * existing device to display the QR code.
- *
- * The different intents have an explicit one-byte identifier which gets added
- * to the QR code data.
- */
-
-enum class QrCodeIntent {
-    
-    /**
-     * Enum variant for the case where the new device is displaying the QR
-     * code.
-     */
-    LOGIN,
-    /**
-     * Enum variant for the case where the existing device is displaying the QR
-     * code.
-     */
-    RECIPROCATE;
-
-    
-
-
-    companion object
-}
-
-
-/**
- * @suppress
- */
-public object FfiConverterTypeQrCodeIntent: FfiConverterRustBuffer<QrCodeIntent> {
-    override fun read(buf: ByteBuffer) = try {
-        QrCodeIntent.values()[buf.getInt() - 1]
-    } catch (e: IndexOutOfBoundsException) {
-        throw RuntimeException("invalid enum value, something is very wrong!!", e)
-    }
-
-    override fun allocationSize(value: QrCodeIntent) = 4UL
-
-    override fun write(value: QrCodeIntent, buf: ByteBuffer) {
-        buf.putInt(value.ordinal + 1)
-    }
-}
-
-
 
 
 
@@ -2199,10 +2123,6 @@ enum class TrustRequirement {
     
     /**
      * Decrypt events from everyone regardless of trust.
-     *
-     * Not recommended, per the guidance of [MSC4153].
-     *
-     * [MSC4153]: https://github.com/matrix-org/matrix-doc/pull/4153
      */
     UNTRUSTED,
     /**
