@@ -60,9 +60,9 @@ else
 fi
 
 if ${is_release}; then
-  profile="dist"
+  profile="release"
 else
-  profile="reldev"
+  profile="dev"
 fi
 
 if [ "$gradle_module" = "crypto" ]; then
